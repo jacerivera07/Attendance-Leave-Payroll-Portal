@@ -1,9 +1,12 @@
 /**
- * API Integration Layer for HR Nexus
+ * API Integration Layer for ALP Portal
  * Connects frontend to Django REST API
  */
 
-const API_BASE_URL = 'http://127.0.0.1:8000/api';
+// Automatically detect if running on production or local
+const API_BASE_URL = window.location.hostname === 'attendance-leave-payroll-portal.onrender.com' 
+    ? 'https://attendance-leave-payroll-portal.onrender.com/api'
+    : 'http://127.0.0.1:8000/api';
 
 // API Helper Functions
 const api = {

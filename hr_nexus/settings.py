@@ -25,7 +25,12 @@ SECRET_KEY = "django-insecure-t)_@=9k9^q2$2_11%5r8c7^spw_gn=ycflggii7_j*gcf=ckby
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = ['localhost', '127.0.0.1']
+ALLOWED_HOSTS = [
+    'localhost', 
+    '127.0.0.1',
+    'attendance-leave-payroll-portal.onrender.com',
+    '.onrender.com',  # Allow all Render subdomains
+]
 
 
 # Application definition
@@ -160,12 +165,14 @@ CORS_ALLOWED_ORIGINS = [
     "http://127.0.0.1:3000",
     "http://localhost:8000",
     "http://127.0.0.1:8000",
+    "https://attendance-leave-payroll-portal.onrender.com",
 ]
 
 # CSRF Configuration - Exempt API endpoints
 CSRF_TRUSTED_ORIGINS = [
     "http://localhost:8000",
     "http://127.0.0.1:8000",
+    "https://attendance-leave-payroll-portal.onrender.com",
 ]
 
 # Exempt API endpoints from CSRF (for development)

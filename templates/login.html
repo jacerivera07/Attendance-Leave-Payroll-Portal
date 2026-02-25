@@ -132,7 +132,9 @@
         // Initialize Lucide icons
         lucide.createIcons();
 
-        const API_URL = 'http://127.0.0.1:8000/api';
+        const API_URL = window.location.hostname === 'attendance-leave-payroll-portal.onrender.com' 
+            ? 'https://attendance-leave-payroll-portal.onrender.com/api'
+            : 'http://127.0.0.1:8000/api';
 
         function showError(message) {
             const errorDiv = document.getElementById('error-message');
