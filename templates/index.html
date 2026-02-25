@@ -1,0 +1,1911 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALP Portal - Attendance & Payroll System</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {% load static %}
+    <script src="{% static 'api.js' %}"></script>
+    <script src="{% static 'admin_extensions.js' %}"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        .sidebar-link {
+            transition: all 0.3s ease;
+        }
+        .sidebar-link:hover {
+            background-color: rgba(99, 102, 241, 0.1);
+            color: #6366f1;
+        }
+        .sidebar-link.active {
+            background-color: #6366f1;
+            color: white;
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
+        }
+        .status-present { background-color: #dcfce7; color: #166534; }
+        .status-absent { background-color: #fee2e2; color: #991b1b; }
+        .status-late { background-color: #fef3c7; color: #92400e; }
+        .status-leave { background-color: #e0e7ff; color: #3730a3; }
+        .status-pending { background-color: #fef9c3; color: #854d0e; }
+        .status-approved { background-color: #dcfce7; color: #166534; }
+        .status-rejected { background-color: #fee2e2; color: #991b1b; }
+        
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c7c7c7;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a0a0a0;
+        }
+        
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <!-- Mobile Header -->
+    <div class="lg:hidden bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-40">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+                <i data-lucide="users" class="w-5 h-5 text-white"></i>
+            </div>
+            <span class="font-bold text-lg text-indigo-900">ALP Portal</span>
+        </div>
+        <button onclick="toggleMobileMenu()" class="p-2 hover:bg-gray-100 rounded-lg">
+            <i data-lucide="menu" class="w-6 h-6"></i>
+        </button>
+    </div>
+
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col">
+            <div class="p-6 border-b border-gray-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
+                        <i data-lucide="users" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-xl text-indigo-900">ALP Portal</h1>
+                        <p class="text-xs text-gray-500">Attendance & Payroll</p>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+                <button onclick="switchView('dashboard')" id="nav-dashboard" class="sidebar-link active w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    Dashboard
+                </button>
+                <button onclick="switchView('employees')" id="nav-employees" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600">
+                    <i data-lucide="user-circle" class="w-5 h-5"></i>
+                    Employees
+                </button>
+                <button onclick="switchView('attendance')" id="nav-attendance" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600">
+                    <i data-lucide="clock" class="w-5 h-5"></i>
+                    Attendance
+                </button>
+                <button onclick="switchView('leave')" id="nav-leave" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600">
+                    <i data-lucide="calendar-off" class="w-5 h-5"></i>
+                    Leave Management
+                </button>
+                <button onclick="switchView('payroll')" id="nav-payroll" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600">
+                    <i data-lucide="banknote" class="w-5 h-5"></i>
+                    Payroll
+                </button>
+                <button onclick="switchView('reports')" id="nav-reports" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600">
+                    <i data-lucide="file-text" class="w-5 h-5"></i>
+                    Reports
+                </button>
+            </nav>
+
+            <!-- User Profile & Logout Section -->
+            <div class="p-4 border-t border-gray-100 space-y-3">
+                <!-- User Info -->
+                <div class="bg-gray-50 rounded-xl p-3">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-10 h-10 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                            <span id="user-initials">?</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold text-gray-900 truncate" id="user-name">Loading...</p>
+                            <p class="text-xs text-gray-500 truncate" id="user-role">User</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Logout Button -->
+                <button onclick="handleLogout()" class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium transition-colors">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                    <span>Logout</span>
+                </button>
+                
+                <!-- Current Time -->
+                <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-3 text-white text-center">
+                    <p class="text-xs opacity-90 mb-1">Current Time</p>
+                    <p id="current-time" class="text-base font-bold font-mono">00:00:00</p>
+                    <p id="current-date" class="text-xs opacity-90 mt-1">Loading...</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Mobile Menu Overlay -->
+        <div id="mobile-overlay" onclick="toggleMobileMenu()" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden lg:hidden"></div>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto bg-gray-50 p-4 lg:p-8">
+            
+            <!-- Dashboard View -->
+            <div id="view-dashboard" class="view-section fade-in">
+                <div class="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Dashboard</h2>
+                        <p class="text-gray-600 mt-1">Welcome back! Here's what's happening today.</p>
+                    </div>
+                    <button onclick="openModal('clock-modal')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-medium flex items-center gap-2 shadow-lg shadow-indigo-200 transition-all hover:scale-105">
+                        <i data-lucide="fingerprint" class="w-5 h-5"></i>
+                        Clock In/Out
+                    </button>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600 mb-1">Total Employees</p>
+                                <h3 class="text-3xl font-bold text-gray-900" id="stat-total-employees">0</h3>
+                            </div>
+                            <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                                <i data-lucide="users" class="w-6 h-6 text-blue-600"></i>
+                            </div>
+                        </div>
+                        <p class="text-sm text-green-600 mt-2 flex items-center gap-1">
+                            <i data-lucide="trending-up" class="w-4 h-4"></i>
+                            <span>Active</span>
+                        </p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600 mb-1">Present Today</p>
+                                <h3 class="text-3xl font-bold text-gray-900" id="stat-present-today">0</h3>
+                            </div>
+                            <div class="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
+                                <i data-lucide="check-circle" class="w-6 h-6 text-green-600"></i>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-2" id="stat-attendance-rate">0% attendance rate</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600 mb-1">On Leave</p>
+                                <h3 class="text-3xl font-bold text-gray-900" id="stat-on-leave">0</h3>
+                            </div>
+                            <div class="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
+                                <i data-lucide="coffee" class="w-6 h-6 text-purple-600"></i>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-2">Approved leaves today</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600 mb-1">Monthly Payroll</p>
+                                <h3 class="text-3xl font-bold text-gray-900" id="stat-monthly-payroll">$0</h3>
+                            </div>
+                            <div class="w-12 h-12 bg-orange-50 rounded-xl flex items-center justify-center">
+                                <i data-lucide="dollar-sign" class="w-6 h-6 text-orange-600"></i>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-2">Current month estimate</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Recent Activity -->
+                    <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-lg font-bold text-gray-900">Recent Attendance</h3>
+                            <button onclick="switchView('attendance')" class="text-indigo-600 text-sm font-medium hover:underline">View All</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-gray-50 text-gray-600 text-xs uppercase">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left rounded-tl-lg">Employee</th>
+                                        <th class="px-4 py-3 text-left">Status</th>
+                                        <th class="px-4 py-3 text-left">Clock In</th>
+                                        <th class="px-4 py-3 text-left rounded-tr-lg">Clock Out</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-attendance-table" class="text-sm">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- Leave Requests -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-lg font-bold text-gray-900">Pending Leaves</h3>
+                            <span id="pending-leaves-count" class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded-full">0</span>
+                        </div>
+                        <div id="pending-leaves-list" class="space-y-4">
+                            <!-- Populated by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Employees View -->
+            <div id="view-employees" class="view-section hidden fade-in">
+                <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Employees</h2>
+                        <p class="text-gray-600 mt-1">Manage your team members</p>
+                    </div>
+                    <button onclick="viewPendingEmployees()" class="bg-yellow-500 hover:bg-yellow-600 text-white px-4 py-2 rounded-xl font-medium flex items-center gap-2 shadow-lg shadow-yellow-200 transition-all relative">
+                        <i data-lucide="bell" class="w-5 h-5"></i>
+                        <span>Pending Employees</span>
+                        <span id="pending-badge" class="hidden absolute -top-2 -right-2 bg-red-500 text-white text-xs font-bold rounded-full w-6 h-6 flex items-center justify-center animate-pulse">0</span>
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="p-4 border-b border-gray-100 flex flex-col sm:flex-row gap-4">
+                        <div class="relative flex-1">
+                            <i data-lucide="search" class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5"></i>
+                            <input type="text" id="employee-search" placeholder="Search employees..." class="w-full pl-10 pr-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" onkeyup="filterEmployees()">
+                        </div>
+                        <select id="department-filter" class="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" onchange="filterEmployees()">
+                            <option value="">All Departments</option>
+                            <option value="Engineering">Engineering</option>
+                            <option value="Design">Design</option>
+                            <option value="Marketing">Marketing</option>
+                            <option value="HR">HR</option>
+                            <option value="Sales">Sales</option>
+                        </select>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 text-gray-600 text-xs uppercase">
+                                <tr>
+                                    <th class="px-6 py-4 text-left">Employee</th>
+                                    <th class="px-6 py-4 text-left">Department</th>
+                                    <th class="px-6 py-4 text-left">Position</th>
+                                    <th class="px-6 py-4 text-left">Salary</th>
+                                    <th class="px-6 py-4 text-left">Join Date</th>
+                                    <th class="px-6 py-4 text-left">Status</th>
+                                    <th class="px-6 py-4 text-left">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employees-table" class="divide-y divide-gray-100">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Attendance View -->
+            <div id="view-attendance" class="view-section hidden fade-in">
+                <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Attendance Tracker</h2>
+                        <p class="text-gray-600 mt-1">Monitor daily attendance records</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="date" id="attendance-date" class="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" onchange="loadAttendanceForDate()">
+                        <button onclick="openModal('mark-attendance-modal')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-medium flex items-center gap-2">
+                            <i data-lucide="edit" class="w-5 h-5"></i>
+                            Mark Attendance
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 text-gray-600 text-xs uppercase">
+                                <tr>
+                                    <th class="px-6 py-4 text-left">Employee</th>
+                                    <th class="px-6 py-4 text-left">Date</th>
+                                    <th class="px-6 py-4 text-left">Status</th>
+                                    <th class="px-6 py-4 text-left">Clock In</th>
+                                    <th class="px-6 py-4 text-left">Clock Out</th>
+                                    <th class="px-6 py-4 text-left">Working Hours</th>
+                                    <th class="px-6 py-4 text-left">Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendance-table" class="divide-y divide-gray-100">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Leave View -->
+            <div id="view-leave" class="view-section hidden fade-in">
+                <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Leave Management</h2>
+                        <p class="text-gray-600 mt-1">Manage leave requests and balances</p>
+                    </div>
+                    <button onclick="openModal('request-leave-modal')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-medium flex items-center gap-2 shadow-lg shadow-indigo-200">
+                        <i data-lucide="plus" class="w-5 h-5"></i>
+                        Request Leave
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h4 class="font-semibold text-gray-900 mb-4">Leave Summary</h4>
+                        <div class="space-y-3">
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Total Requests</span>
+                                <span class="font-bold text-indigo-600" id="leave-total">0</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Approved</span>
+                                <span class="font-bold text-green-600" id="leave-approved">0</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Pending</span>
+                                <span class="font-bold text-yellow-600" id="leave-pending">0</span>
+                            </div>
+                            <div class="flex justify-between items-center">
+                                <span class="text-sm text-gray-600">Rejected</span>
+                                <span class="font-bold text-red-600" id="leave-rejected">0</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="lg:col-span-2 bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h4 class="font-semibold text-gray-900 mb-4">Leave Calendar</h4>
+                        <div id="leave-calendar" class="grid grid-cols-7 gap-2 text-center text-sm">
+                            <!-- Simple calendar representation -->
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 text-gray-600 text-xs uppercase">
+                                <tr>
+                                    <th class="px-6 py-4 text-left">Employee</th>
+                                    <th class="px-6 py-4 text-left">Leave Type</th>
+                                    <th class="px-6 py-4 text-left">From</th>
+                                    <th class="px-6 py-4 text-left">To</th>
+                                    <th class="px-6 py-4 text-left">Days</th>
+                                    <th class="px-6 py-4 text-left">Status</th>
+                                    <th class="px-6 py-4 text-left">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leave-table" class="divide-y divide-gray-100">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Payroll View -->
+            <div id="view-payroll" class="view-section hidden fade-in">
+                <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">Payroll System</h2>
+                        <p class="text-gray-600 mt-1">Manage salaries and generate payslips</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <select id="payroll-month" class="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" onchange="generatePayroll()">
+                            <option value="0">January</option>
+                            <option value="1">February</option>
+                            <option value="2">March</option>
+                            <option value="3">April</option>
+                            <option value="4">May</option>
+                            <option value="5">June</option>
+                            <option value="6">July</option>
+                            <option value="7">August</option>
+                            <option value="8">September</option>
+                            <option value="9">October</option>
+                            <option value="10">November</option>
+                            <option value="11">December</option>
+                        </select>
+                        <button onclick="processPayroll()" class="bg-green-600 hover:bg-green-700 text-white px-4 py-2 rounded-xl font-medium flex items-center gap-2 shadow-lg shadow-green-200">
+                            <i data-lucide="calculator" class="w-5 h-5"></i>
+                            Process Payroll
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 text-gray-600 text-xs uppercase">
+                                <tr>
+                                    <th class="px-6 py-4 text-left">Employee</th>
+                                    <th class="px-6 py-4 text-left">Basic Salary</th>
+                                    <th class="px-6 py-4 text-left">Working Days</th>
+                                    <th class="px-6 py-4 text-left">Overtime</th>
+                                    <th class="px-6 py-4 text-left">Deductions</th>
+                                    <th class="px-6 py-4 text-left">Net Salary</th>
+                                    <th class="px-6 py-4 text-left">Status</th>
+                                    <th class="px-6 py-4 text-left">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="payroll-table" class="divide-y divide-gray-100">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Reports View -->
+            <div id="view-reports" class="view-section hidden fade-in">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">Analytics & Reports</h2>
+                    <p class="text-gray-600 mt-1">Visualize your HR data</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h4 class="font-semibold text-gray-900 mb-4">Attendance Overview</h4>
+                        <div style="height: 300px; position: relative;">
+                            <canvas id="attendanceChart"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <h4 class="font-semibold text-gray-900 mb-4">Department Distribution</h4>
+                        <div style="height: 300px; position: relative;">
+                            <canvas id="departmentChart"></canvas>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                    <h4 class="font-semibold text-gray-900 mb-4">Monthly Payroll Trend</h4>
+                    <div style="height: 350px; position: relative;">
+                        <canvas id="payrollChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Modals -->
+    
+    <!-- Clock In/Out Modal -->
+    <div id="clock-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 modal-backdrop" onclick="closeModal('clock-modal')"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative slide-in">
+                <button onclick="closeModal('clock-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i data-lucide="fingerprint" class="w-8 h-8 text-indigo-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900">Quick Clock</h3>
+                    <p class="text-gray-500 mt-1">Record your attendance</p>
+                </div>
+                
+                <form id="clock-form" onsubmit="handleClockSubmit(event)">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-2">Select Employee</label>
+                        <select id="clock-employee" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" required>
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <button type="button" onclick="setClockType('in')" id="btn-clock-in" class="py-3 px-4 rounded-xl border-2 border-green-500 text-green-600 font-medium hover:bg-green-50 transition-colors flex flex-col items-center gap-2">
+                            <i data-lucide="log-in" class="w-6 h-6"></i>
+                            Clock In
+                        </button>
+                        <button type="button" onclick="setClockType('out')" id="btn-clock-out" class="py-3 px-4 rounded-xl border-2 border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-colors flex flex-col items-center gap-2">
+                            <i data-lucide="log-out" class="w-6 h-6"></i>
+                            Clock Out
+                        </button>
+                    </div>
+                    
+                    <input type="hidden" id="clock-type" value="in">
+                    
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-medium transition-colors">
+                        Confirm
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Employee Modal -->
+    <div id="add-employee-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 modal-backdrop" onclick="closeModal('add-employee-modal')"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4 overflow-y-auto">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 relative slide-in my-8">
+                <button onclick="closeModal('add-employee-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+                <h3 class="text-xl font-bold text-gray-900 mb-6">Add New Employee</h3>
+                
+                <form id="add-employee-form" onsubmit="handleAddEmployee(event)">
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                            <input type="text" name="firstName" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                            <input type="text" name="lastName" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input type="email" name="email" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                            <select name="department" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="Engineering">Engineering</option>
+                                <option value="Design">Design</option>
+                                <option value="Marketing">Marketing</option>
+                                <option value="HR">HR</option>
+                                <option value="Sales">Sales</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Position</label>
+                            <input type="text" name="position" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Base Salary ($)</label>
+                            <input type="number" name="salary" required min="0" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Join Date</label>
+                            <input type="date" name="joinDate" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                    
+                    <div class="flex gap-3">
+                        <button type="button" onclick="closeModal('add-employee-modal')" class="flex-1 px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+                        <button type="submit" class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors">Add Employee</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Request Leave Modal -->
+    <div id="request-leave-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 modal-backdrop" onclick="closeModal('request-leave-modal')"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative slide-in">
+                <button onclick="closeModal('request-leave-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+                <h3 class="text-xl font-bold text-gray-900 mb-6">Request Leave</h3>
+                
+                <form id="request-leave-form" onsubmit="handleLeaveRequest(event)">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Employee</label>
+                        <select id="leave-employee" name="employeeId" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Leave Type</label>
+                        <select name="type" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="Vacation">Vacation</option>
+                            <option value="Sick Leave">Sick Leave</option>
+                            <option value="Personal">Personal</option>
+                            <option value="Work From Home">Work From Home</option>
+                            <option value="Unpaid">Unpaid Leave</option>
+                        </select>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                            <input type="date" name="startDate" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                            <input type="date" name="endDate" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                        <textarea name="reason" rows="3" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                    </div>
+                    
+                    <div class="flex gap-3">
+                        <button type="button" onclick="closeModal('request-leave-modal')" class="flex-1 px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+                        <button type="submit" class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors">Submit Request</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Mark Attendance Modal -->
+    <div id="mark-attendance-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 modal-backdrop" onclick="closeModal('mark-attendance-modal')"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative slide-in">
+                <button onclick="closeModal('mark-attendance-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+                <h3 class="text-xl font-bold text-gray-900 mb-6">Mark Attendance</h3>
+                
+                <form id="mark-attendance-form" onsubmit="handleMarkAttendance(event)">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Employee</label>
+                        <select id="mark-employee" name="employeeId" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <!-- Populated by JS -->
+                        </select>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Date</label>
+                        <input type="date" name="date" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select name="status" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" onchange="toggleTimeInputs(this.value)">
+                            <option value="Present">Present</option>
+                            <option value="Absent">Absent</option>
+                            <option value="Late">Late</option>
+                            <option value="Half Day">Half Day</option>
+                            <option value="On Leave">On Leave</option>
+                        </select>
+                    </div>
+                    
+                    <div id="time-inputs" class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Clock In</label>
+                            <input type="time" name="clockIn" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Clock Out</label>
+                            <input type="time" name="clockOut" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Notes</label>
+                        <input type="text" name="notes" placeholder="Optional notes..." class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    
+                    <div class="flex gap-3">
+                        <button type="button" onclick="closeModal('mark-attendance-modal')" class="flex-1 px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+                        <button type="submit" class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors">Mark Attendance</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payslip Modal -->
+    <div id="payslip-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 modal-backdrop" onclick="closeModal('payslip-modal')"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4 overflow-y-auto">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 relative slide-in my-8">
+                <button onclick="closeModal('payslip-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+                
+                <div id="payslip-content" class="border-2 border-gray-200 rounded-xl p-8 bg-white">
+                    <!-- Payslip content populated by JS -->
+                </div>
+                
+                <div class="mt-6 flex gap-3 justify-end">
+                    <button onclick="closeModal('payslip-modal')" class="px-6 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors">Close</button>
+                    <button onclick="printPayslip()" class="px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2">
+                        <i data-lucide="printer" class="w-5 h-5"></i>
+                        Print Payslip
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% verbatim %}
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+
+        // API Configuration
+        const API_URL = 'http://127.0.0.1:8000/api';
+
+        // Authentication Check
+        function checkAuth() {
+            const token = localStorage.getItem('token');
+            const user = localStorage.getItem('user');
+            
+            if (!token || !user) {
+                window.location.href = '/login';
+                return null;
+            }
+            
+            const userData = JSON.parse(user);
+            
+            // Redirect employees to their dashboard
+            if (userData.role === 'employee') {
+                window.location.href = '/employee/';
+                return null;
+            }
+            
+            return userData;
+        }
+
+        // Load User Info
+        function loadUserInfo() {
+            const user = checkAuth();
+            if (!user) return;
+            
+            // Update user display
+            const initials = (user.first_name?.[0] || '') + (user.last_name?.[0] || '');
+            document.getElementById('user-initials').textContent = initials || user.username?.[0]?.toUpperCase() || '?';
+            document.getElementById('user-name').textContent = user.first_name && user.last_name 
+                ? `${user.first_name} ${user.last_name}` 
+                : user.username;
+            document.getElementById('user-role').textContent = user.role === 'admin' ? 'Administrator' : 'Employee';
+        }
+
+        // Logout Function
+        async function handleLogout() {
+            if (!confirm('Are you sure you want to logout?')) return;
+            
+            const token = localStorage.getItem('token');
+            
+            try {
+                // Call logout API
+                await fetch(API_URL + '/auth/logout/', {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': 'Token ' + token,
+                        'Content-Type': 'application/json'
+                    }
+                });
+            } catch (error) {
+                console.error('Logout error:', error);
+            }
+            
+            // Clear local storage
+            localStorage.removeItem('token');
+            localStorage.removeItem('user');
+            
+            // Redirect to login
+            window.location.href = '/login';
+        }
+
+        // Check authentication on page load
+        window.addEventListener('DOMContentLoaded', () => {
+            loadUserInfo();
+            loadDataFromAPI(); // Load data from API instead of localStorage
+        });
+
+        // Data Store
+        let employees = [];
+        let attendance = [];
+        let leaves = [];
+        let payroll = [];
+
+        // Load data from API
+        async function loadDataFromAPI() {
+            const token = localStorage.getItem('token');
+            const headers = token ? {
+                'Authorization': 'Token ' + token
+            } : {};
+
+            try {
+                // Load employees
+                const empResponse = await fetch(API_URL + '/employees/', { headers });
+                if (empResponse.ok) {
+                    const empData = await empResponse.json();
+                    // Transform API data to match frontend format
+                    employees = (empData.results || empData).map(emp => ({
+                        id: emp.id,
+                        firstName: emp.first_name,
+                        lastName: emp.last_name,
+                        email: emp.email,
+                        department: emp.department,
+                        position: emp.position,
+                        salary: parseFloat(emp.salary),
+                        joinDate: emp.join_date,
+                        status: emp.status
+                    }));
+                    console.log('Loaded employees:', employees.length);
+                }
+
+                // Load attendance
+                const attResponse = await fetch(API_URL + '/attendance/', { headers });
+                if (attResponse.ok) {
+                    const attData = await attResponse.json();
+                    attendance = (attData.results || attData).map(att => ({
+                        id: att.id,
+                        employeeId: att.employee,
+                        date: att.date,
+                        status: att.status,
+                        clockIn: att.clock_in,
+                        clockOut: att.clock_out,
+                        notes: att.notes || ''
+                    }));
+                    console.log('Loaded attendance:', attendance.length);
+                }
+
+                // Load leaves
+                const leaveResponse = await fetch(API_URL + '/leaves/', { headers });
+                if (leaveResponse.ok) {
+                    const leaveData = await leaveResponse.json();
+                    leaves = (leaveData.results || leaveData).map(leave => ({
+                        id: leave.id,
+                        employeeId: leave.employee,
+                        type: leave.leave_type,
+                        startDate: leave.start_date,
+                        endDate: leave.end_date,
+                        days: leave.days,
+                        status: leave.status,
+                        reason: leave.reason || ''
+                    }));
+                    console.log('Loaded leaves:', leaves.length);
+                }
+
+                // Load payroll
+                const payrollResponse = await fetch(API_URL + '/payroll/', { headers });
+                if (payrollResponse.ok) {
+                    const payrollData = await payrollResponse.json();
+                    payroll = payrollData.results || payrollData;
+                    console.log('Loaded payroll:', payroll.length);
+                }
+
+                // Refresh dashboard after loading data
+                refreshDashboard();
+                
+            } catch (error) {
+                console.error('Error loading data from API:', error);
+            }
+        }
+
+        // Current user simulation (first employee as admin)
+        const currentUser = employees[0] || null;
+
+        // Initialize Charts
+        let attendanceChart, departmentChart, payrollChart;
+
+        // Clock
+        function updateClock() {
+            const now = new Date();
+            document.getElementById('current-time').textContent = now.toLocaleTimeString('en-US', { hour12: false });
+            document.getElementById('current-date').textContent = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+        }
+        setInterval(updateClock, 1000);
+        updateClock();
+
+        // Mobile Menu Toggle
+        function toggleMobileMenu() {
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('mobile-overlay');
+            sidebar.classList.toggle('-translate-x-full');
+            overlay.classList.toggle('hidden');
+        }
+
+        // View Switching
+        function switchView(viewName) {
+            // Hide all views
+            document.querySelectorAll('.view-section').forEach(el => el.classList.add('hidden'));
+            // Show selected view
+            document.getElementById(`view-${viewName}`).classList.remove('hidden');
+            
+            // Update sidebar active state
+            document.querySelectorAll('.sidebar-link').forEach(el => el.classList.remove('active'));
+            document.getElementById(`nav-${viewName}`).classList.add('active');
+            
+            // Close mobile menu if open
+            if (window.innerWidth < 1024) {
+                toggleMobileMenu();
+            }
+
+            // Refresh data for specific views
+            if (viewName === 'dashboard') refreshDashboard();
+            if (viewName === 'employees') renderEmployees();
+            if (viewName === 'attendance') loadAttendanceForDate();
+            if (viewName === 'leave') renderLeaves();
+            if (viewName === 'payroll') generatePayroll();
+            if (viewName === 'reports') {
+                // Delay chart initialization to allow fade-in animation to complete
+                setTimeout(() => initCharts(), 100);
+            }
+            
+            lucide.createIcons();
+        }
+
+        // Modal Functions
+        function openModal(modalId) {
+            document.getElementById(modalId).classList.remove('hidden');
+            if (modalId === 'clock-modal') populateEmployeeSelect('clock-employee');
+            if (modalId === 'request-leave-modal') populateEmployeeSelect('leave-employee');
+            if (modalId === 'mark-attendance-modal') {
+                populateEmployeeSelect('mark-employee');
+                document.querySelector('#mark-attendance-form [name="date"]').valueAsDate = new Date();
+            }
+            lucide.createIcons();
+        }
+
+        function closeModal(modalId) {
+            document.getElementById(modalId).classList.add('hidden');
+        }
+
+        // Data Management - No longer needed, using API
+        // function saveData() { ... }
+        // function initializeSampleData() { ... }
+
+        // Dashboard Functions
+        function refreshDashboard() {
+            // Stats
+            document.getElementById('stat-total-employees').textContent = employees.length;
+            
+            const today = new Date().toISOString().split('T')[0];
+            const todayAttendance = attendance.filter(a => a.date === today);
+            const presentToday = todayAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length;
+            document.getElementById('stat-present-today').textContent = presentToday;
+            document.getElementById('stat-attendance-rate').textContent = `${Math.round((presentToday / employees.length) * 100)}% attendance rate`;
+            
+            const onLeave = leaves.filter(l => {
+                const start = new Date(l.startDate);
+                const end = new Date(l.endDate);
+                const now = new Date();
+                return l.status === 'Approved' && now >= start && now <= end;
+            }).length;
+            document.getElementById('stat-on-leave').textContent = onLeave;
+            
+            // Calculate monthly payroll
+            const monthlyPayroll = employees.reduce((sum, emp) => sum + emp.salary, 0);
+            document.getElementById('stat-monthly-payroll').textContent = `₱${monthlyPayroll.toLocaleString()}`;
+            
+            // Recent attendance table
+            const recentAttendance = attendance.slice(-5).reverse();
+            const recentTable = document.getElementById('recent-attendance-table');
+            recentTable.innerHTML = recentAttendance.map(a => {
+                const emp = employees.find(e => e.id === a.employeeId);
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-4 py-3">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">
+                                    ${emp ? emp.firstName[0] + emp.lastName[0] : '??'}
+                                </div>
+                                <span class="font-medium">${emp ? emp.firstName + ' ' + emp.lastName : 'Unknown'}</span>
+                            </div>
+                        </td>
+                        <td class="px-4 py-3"><span class="px-2 py-1 rounded-full text-xs font-medium status-${a.status.toLowerCase().replace(' ', '-')}">${a.status}</span></td>
+                        <td class="px-4 py-3 text-gray-600">${a.clockIn || '-'}</td>
+                        <td class="px-4 py-3 text-gray-600">${a.clockOut || '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+            
+            // Pending leaves
+            const pendingLeaves = leaves.filter(l => l.status === 'Pending');
+            document.getElementById('pending-leaves-count').textContent = pendingLeaves.length;
+            
+            const pendingList = document.getElementById('pending-leaves-list');
+            if (pendingLeaves.length === 0) {
+                pendingList.innerHTML = '<p class="text-gray-500 text-center py-4">No pending requests</p>';
+            } else {
+                pendingList.innerHTML = pendingLeaves.map(l => {
+                    const emp = employees.find(e => e.id === l.employeeId);
+                    return `
+                        <div class="flex items-center justify-between p-3 bg-gray-50 rounded-xl">
+                            <div class="flex items-center gap-3">
+                                <div class="w-10 h-10 rounded-full bg-yellow-100 flex items-center justify-center">
+                                    <i data-lucide="clock" class="w-5 h-5 text-yellow-600"></i>
+                                </div>
+                                <div>
+                                    <p class="font-medium text-sm">${emp ? emp.firstName + ' ' + emp.lastName : 'Unknown'}</p>
+                                    <p class="text-xs text-gray-500">${l.type} • ${l.days} days</p>
+                                </div>
+                            </div>
+                            <div class="flex gap-2">
+                                <button onclick="updateLeaveStatus(${l.id}, 'Approved')" class="p-2 bg-green-100 text-green-600 rounded-lg hover:bg-green-200 transition-colors">
+                                    <i data-lucide="check" class="w-4 h-4"></i>
+                                </button>
+                                <button onclick="updateLeaveStatus(${l.id}, 'Rejected')" class="p-2 bg-red-100 text-red-600 rounded-lg hover:bg-red-200 transition-colors">
+                                    <i data-lucide="x" class="w-4 h-4"></i>
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            }
+            
+            lucide.createIcons();
+        }
+
+        // Employee Functions
+        function renderEmployees() {
+            const table = document.getElementById('employees-table');
+            const search = document.getElementById('employee-search').value.toLowerCase();
+            const deptFilter = document.getElementById('department-filter').value;
+            
+            let filtered = employees;
+            if (search) {
+                filtered = filtered.filter(e => 
+                    (e.firstName + ' ' + e.lastName).toLowerCase().includes(search) ||
+                    e.email.toLowerCase().includes(search)
+                );
+            }
+            if (deptFilter) {
+                filtered = filtered.filter(e => e.department === deptFilter);
+            }
+            
+            table.innerHTML = filtered.map(emp => `
+                <tr class="hover:bg-gray-50">
+                    <td class="px-6 py-4">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-400 to-purple-500 flex items-center justify-center text-white font-bold">
+                                ${emp.firstName[0]}${emp.lastName[0]}
+                            </div>
+                            <div>
+                                <p class="font-medium text-gray-900">${emp.firstName} ${emp.lastName}</p>
+                                <p class="text-sm text-gray-500">${emp.email}</p>
+                            </div>
+                        </div>
+                    </td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${emp.department}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${emp.position}</td>
+                    <td class="px-6 py-4 text-sm font-medium text-gray-900">₱${emp.salary.toLocaleString()}</td>
+                    <td class="px-6 py-4 text-sm text-gray-600">${emp.joinDate}</td>
+                    <td class="px-6 py-4">
+                        <span class="px-3 py-1 rounded-full text-xs font-medium ${emp.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' : emp.status === 'Active' ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-700'}">${emp.status}</span>
+                    </td>
+                    <td class="px-6 py-4">
+                        <div class="flex gap-2">
+                            <button onclick="openEditEmployee(${emp.id})" class="text-indigo-600 hover:text-indigo-800 transition-colors" title="Edit">
+                                <i data-lucide="edit" class="w-5 h-5"></i>
+                            </button>
+                            <button onclick="deleteEmployee(${emp.id})" class="text-red-600 hover:text-red-800 transition-colors" title="Delete">
+                                <i data-lucide="trash-2" class="w-5 h-5"></i>
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            `).join('');
+            
+            lucide.createIcons();
+        }
+
+        function filterEmployees() {
+            renderEmployees();
+        }
+
+        function handleAddEmployee(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const newEmployee = {
+                id: Date.now(),
+                firstName: formData.get('firstName'),
+                lastName: formData.get('lastName'),
+                email: formData.get('email'),
+                department: formData.get('department'),
+                position: formData.get('position'),
+                salary: parseFloat(formData.get('salary')),
+                joinDate: formData.get('joinDate'),
+                status: 'Active'
+            };
+            
+            employees.push(newEmployee);
+            // Data now saved via API, not localStorage
+            closeModal('add-employee-modal');
+            e.target.reset();
+            renderEmployees();
+            refreshDashboard();
+        }
+
+        function deleteEmployee(id) {
+            if (confirm('Are you sure you want to delete this employee?')) {
+                employees = employees.filter(e => e.id !== id);
+                // Data now saved via API, not localStorage
+                renderEmployees();
+                refreshDashboard();
+            }
+        }
+
+        function populateEmployeeSelect(selectId) {
+            const select = document.getElementById(selectId);
+            select.innerHTML = employees.map(e => 
+                `<option value="${e.id}">${e.firstName} ${e.lastName} (${e.department})</option>`
+            ).join('');
+        }
+
+        // Attendance Functions
+        function loadAttendanceForDate() {
+            const dateInput = document.getElementById('attendance-date');
+            if (!dateInput.value) {
+                dateInput.valueAsDate = new Date();
+            }
+            const date = dateInput.value;
+            
+            const table = document.getElementById('attendance-table');
+            const dayAttendance = attendance.filter(a => a.date === date);
+            
+            // Show all employees with their attendance status for this date
+            table.innerHTML = employees.map(emp => {
+                const record = dayAttendance.find(a => a.employeeId === emp.id);
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">
+                                    ${emp.firstName[0]}${emp.lastName[0]}
+                                </div>
+                                <span class="font-medium">${emp.firstName} ${emp.lastName}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">${date}</td>
+                        <td class="px-6 py-4">
+                            ${record ? 
+                                `<span class="px-3 py-1 rounded-full text-xs font-medium status-${record.status.toLowerCase().replace(' ', '-')}">${record.status}</span>` : 
+                                '<span class="px-3 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">Not Marked</span>'
+                            }
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">${record?.clockIn || '-'}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">${record?.clockOut || '-'}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">${record ? calculateWorkingHours(record.clockIn, record.clockOut) : '-'}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">${record?.notes || '-'}</td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        function calculateWorkingHours(clockIn, clockOut) {
+            if (!clockIn || !clockOut) return '-';
+            const [inH, inM] = clockIn.split(':').map(Number);
+            const [outH, outM] = clockOut.split(':').map(Number);
+            const diff = (outH * 60 + outM) - (inH * 60 + inM);
+            const hours = Math.floor(diff / 60);
+            const mins = diff % 60;
+            return `${hours}h ${mins}m`;
+        }
+
+        function toggleTimeInputs(status) {
+            const timeInputs = document.getElementById('time-inputs');
+            if (status === 'Absent' || status === 'On Leave') {
+                timeInputs.classList.add('opacity-50', 'pointer-events-none');
+            } else {
+                timeInputs.classList.remove('opacity-50', 'pointer-events-none');
+            }
+        }
+
+        function handleMarkAttendance(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const newRecord = {
+                id: Date.now(),
+                employeeId: parseInt(formData.get('employeeId')),
+                date: formData.get('date'),
+                status: formData.get('status'),
+                clockIn: formData.get('clockIn'),
+                clockOut: formData.get('clockOut'),
+                notes: formData.get('notes')
+            };
+            
+            // Remove existing record for this employee/date if exists
+            attendance = attendance.filter(a => !(a.employeeId === newRecord.employeeId && a.date === newRecord.date));
+            attendance.push(newRecord);
+            // Data now saved via API, not localStorage
+            closeModal('mark-attendance-modal');
+            e.target.reset();
+            loadAttendanceForDate();
+            refreshDashboard();
+        }
+
+        function setClockType(type) {
+            document.getElementById('clock-type').value = type;
+            document.getElementById('btn-clock-in').classList.toggle('border-green-500', type === 'in');
+            document.getElementById('btn-clock-in').classList.toggle('text-green-600', type === 'in');
+            document.getElementById('btn-clock-in').classList.toggle('border-gray-200', type !== 'in');
+            document.getElementById('btn-clock-in').classList.toggle('text-gray-600', type !== 'in');
+            
+            document.getElementById('btn-clock-out').classList.toggle('border-red-500', type === 'out');
+            document.getElementById('btn-clock-out').classList.toggle('text-red-600', type === 'out');
+            document.getElementById('btn-clock-out').classList.toggle('border-gray-200', type !== 'out');
+            document.getElementById('btn-clock-out').classList.toggle('text-gray-600', type !== 'out');
+        }
+
+        function handleClockSubmit(e) {
+            e.preventDefault();
+            const employeeId = parseInt(document.getElementById('clock-employee').value);
+            const type = document.getElementById('clock-type').value;
+            const now = new Date();
+            const time = now.toTimeString().slice(0, 5);
+            const date = now.toISOString().split('T')[0];
+            
+            const existingRecord = attendance.find(a => a.employeeId === employeeId && a.date === date);
+            
+            if (type === 'in') {
+                if (existingRecord) {
+                    alert('Already clocked in today!');
+                    return;
+                }
+                const hour = now.getHours();
+                attendance.push({
+                    id: Date.now(),
+                    employeeId: employeeId,
+                    date: date,
+                    status: hour >= 9 ? 'Late' : 'Present',
+                    clockIn: time,
+                    clockOut: '',
+                    notes: ''
+                });
+            } else {
+                if (!existingRecord) {
+                    alert('Please clock in first!');
+                    return;
+                }
+                existingRecord.clockOut = time;
+            }
+            
+            // Data now saved via API, not localStorage
+            closeModal('clock-modal');
+            refreshDashboard();
+            if (!document.getElementById('view-attendance').classList.contains('hidden')) {
+                loadAttendanceForDate();
+            }
+        }
+
+        // Leave Functions
+        function renderLeaves() {
+            // Update stats
+            document.getElementById('leave-total').textContent = leaves.length;
+            document.getElementById('leave-approved').textContent = leaves.filter(l => l.status === 'Approved').length;
+            document.getElementById('leave-pending').textContent = leaves.filter(l => l.status === 'Pending').length;
+            document.getElementById('leave-rejected').textContent = leaves.filter(l => l.status === 'Rejected').length;
+            
+            // Render table
+            const table = document.getElementById('leave-table');
+            table.innerHTML = leaves.map(leave => {
+                const emp = employees.find(e => e.id === leave.employeeId);
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">
+                                    ${emp ? emp.firstName[0] + emp.lastName[0] : '??'}
+                                </div>
+                                <span class="font-medium">${emp ? emp.firstName + ' ' + emp.lastName : 'Unknown'}</span>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">${leave.type}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">${leave.startDate}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">${leave.endDate}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">${leave.days} days</td>
+                        <td class="px-6 py-4">
+                            <span class="px-3 py-1 rounded-full text-xs font-medium status-${leave.status.toLowerCase()}">${leave.status}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            ${leave.status === 'Pending' ? `
+                                <div class="flex gap-2">
+                                    <button onclick="updateLeaveStatus(${leave.id}, 'Approved')" class="p-1 bg-green-100 text-green-600 rounded hover:bg-green-200 transition-colors">
+                                        <i data-lucide="check" class="w-4 h-4"></i>
+                                    </button>
+                                    <button onclick="updateLeaveStatus(${leave.id}, 'Rejected')" class="p-1 bg-red-100 text-red-600 rounded hover:bg-red-200 transition-colors">
+                                        <i data-lucide="x" class="w-4 h-4"></i>
+                                    </button>
+                                </div>
+                            ` : '-'}
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            lucide.createIcons();
+        }
+
+        function handleLeaveRequest(e) {
+            e.preventDefault();
+            const formData = new FormData(e.target);
+            const start = new Date(formData.get('startDate'));
+            const end = new Date(formData.get('endDate'));
+            const diffTime = Math.abs(end - start);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            
+            const newLeave = {
+                id: Date.now(),
+                employeeId: parseInt(formData.get('employeeId')),
+                type: formData.get('type'),
+                startDate: formData.get('startDate'),
+                endDate: formData.get('endDate'),
+                days: diffDays,
+                status: 'Pending',
+                reason: formData.get('reason')
+            };
+            
+            leaves.push(newLeave);
+            // Data now saved via API, not localStorage
+            closeModal('request-leave-modal');
+            e.target.reset();
+            renderLeaves();
+            refreshDashboard();
+        }
+
+        function updateLeaveStatus(leaveId, status) {
+            const leave = leaves.find(l => l.id === leaveId);
+            if (leave) {
+                leave.status = status;
+                // Data now saved via API, not localStorage
+                renderLeaves();
+                refreshDashboard();
+            }
+        }
+
+        // Payroll Functions
+        function generatePayroll() {
+            const month = parseInt(document.getElementById('payroll-month').value);
+            const year = new Date().getFullYear();
+            const monthName = new Date(year, month, 1).toLocaleString('default', { month: 'long' });
+            
+            // Calculate working days in month (approx 22)
+            const workingDays = 22;
+            
+            const table = document.getElementById('payroll-table');
+            table.innerHTML = employees.map(emp => {
+                // Calculate attendance for this month
+                const monthAttendance = attendance.filter(a => {
+                    const date = new Date(a.date);
+                    return a.employeeId === emp.id && date.getMonth() === month && date.getFullYear() === year;
+                });
+                
+                const presentDays = monthAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length;
+                const absentDays = workingDays - presentDays;
+                
+                // Calculate overtime (mock calculation)
+                const overtimeHours = monthAttendance.reduce((sum, a) => {
+                    if (a.clockIn && a.clockOut) {
+                        const hours = calculateWorkingHours(a.clockIn, a.clockOut);
+                        const match = hours.match(/(\d+)h/);
+                        if (match) {
+                            const worked = parseInt(match[1]);
+                            if (worked > 8) return sum + (worked - 8);
+                        }
+                    }
+                    return sum;
+                }, 0);
+                
+                const overtimePay = overtimeHours * 25; // $25 per hour
+                
+                // Deductions for absent days
+                const dailyRate = emp.salary / workingDays;
+                const deduction = absentDays * dailyRate;
+                
+                // Bonuses/allowances (mock)
+                const allowances = emp.salary * 0.1; // 10% allowance
+                
+                const netSalary = emp.salary + overtimePay + allowances - deduction;
+                
+                // Check if payroll exists for this month
+                const existingPayroll = payroll.find(p => p.employeeId === emp.id && p.month === month && p.year === year);
+                const status = existingPayroll ? existingPayroll.status : 'Pending';
+                
+                return `
+                    <tr class="hover:bg-gray-50">
+                        <td class="px-6 py-4">
+                            <div class="flex items-center gap-3">
+                                <div class="w-8 h-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-600 font-bold text-xs">
+                                    ${emp.firstName[0]}${emp.lastName[0]}
+                                </div>
+                                <div>
+                                    <p class="font-medium text-gray-900">${emp.firstName} ${emp.lastName}</p>
+                                    <p class="text-xs text-gray-500">${emp.department}</p>
+                                </div>
+                            </div>
+                        </td>
+                        <td class="px-6 py-4 text-sm text-gray-600">${emp.salary.toLocaleString()}</td>
+                        <td class="px-6 py-4 text-sm text-gray-600">${presentDays}/${workingDays}</td>
+                        <td class="px-6 py-4 text-sm text-green-600">+${overtimeHours}h (₱${overtimePay})</td>
+                        <td class="px-6 py-4 text-sm text-red-600">-₱${deduction.toFixed(0)}</td>
+                        <td class="px-6 py-4 text-sm font-bold text-gray-900">₱${netSalary.toFixed(0)}</td>
+                        <td class="px-6 py-4">
+                            <span class="px-3 py-1 rounded-full text-xs font-medium ${status === 'Processed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'}">${status}</span>
+                        </td>
+                        <td class="px-6 py-4">
+                            <button onclick="viewPayslip(${emp.id}, ${month}, ${year})" class="p-2 bg-indigo-100 text-indigo-600 rounded-lg hover:bg-indigo-200 transition-colors mr-2">
+                                <i data-lucide="eye" class="w-4 h-4"></i>
+                            </button>
+                            <button onclick="downloadPayslip(${emp.id}, ${month}, ${year})" class="p-2 bg-gray-100 text-gray-600 rounded-lg hover:bg-gray-200 transition-colors">
+                                <i data-lucide="download" class="w-4 h-4"></i>
+                            </button>
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+            
+            lucide.createIcons();
+        }
+
+        function processPayroll() {
+            const month = parseInt(document.getElementById('payroll-month').value);
+            const year = new Date().getFullYear();
+            
+            if (confirm(`Are you sure you want to process payroll for ${new Date(year, month, 1).toLocaleString('default', { month: 'long' })} ${year}?`)) {
+                employees.forEach(emp => {
+                    const existingIndex = payroll.findIndex(p => p.employeeId === emp.id && p.month === month && p.year === year);
+                    const monthAttendance = attendance.filter(a => {
+                        const date = new Date(a.date);
+                        return a.employeeId === emp.id && date.getMonth() === month && date.getFullYear() === year;
+                    });
+                    
+                    const workingDays = 22;
+                    const presentDays = monthAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length;
+                    const dailyRate = emp.salary / workingDays;
+                    const deduction = (workingDays - presentDays) * dailyRate;
+                    
+                    const overtimeHours = monthAttendance.reduce((sum, a) => {
+                        if (a.clockIn && a.clockOut) {
+                            const hours = calculateWorkingHours(a.clockIn, a.clockOut);
+                            const match = hours.match(/(\d+)h/);
+                            if (match) {
+                                const worked = parseInt(match[1]);
+                                if (worked > 8) return sum + (worked - 8);
+                            }
+                        }
+                        return sum;
+                    }, 0);
+                    
+                    const payrollData = {
+                        id: Date.now() + emp.id,
+                        employeeId: emp.id,
+                        month: month,
+                        year: year,
+                        basicSalary: emp.salary,
+                        allowances: emp.salary * 0.1,
+                        overtime: overtimeHours * 25,
+                        deductions: deduction,
+                        netSalary: emp.salary + (emp.salary * 0.1) + (overtimeHours * 25) - deduction,
+                        status: 'Processed',
+                        processedDate: new Date().toISOString()
+                    };
+                    
+                    if (existingIndex >= 0) {
+                        payroll[existingIndex] = payrollData;
+                    } else {
+                        payroll.push(payrollData);
+                    }
+                });
+                
+                // Data now saved via API, not localStorage
+                generatePayroll();
+                alert('Payroll processed successfully!');
+            }
+        }
+
+        function viewPayslip(employeeId, month, year) {
+            const emp = employees.find(e => e.id === employeeId);
+            const monthName = new Date(year, month, 1).toLocaleString('default', { month: 'long' });
+            
+            const monthAttendance = attendance.filter(a => {
+                const date = new Date(a.date);
+                return a.employeeId === employeeId && date.getMonth() === month && date.getFullYear() === year;
+            });
+            
+            const workingDays = 22;
+            const presentDays = monthAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length;
+            const absentDays = workingDays - presentDays;
+            const dailyRate = emp.salary / workingDays;
+            const deduction = absentDays * dailyRate;
+            
+            const overtimeHours = monthAttendance.reduce((sum, a) => {
+                if (a.clockIn && a.clockOut) {
+                    const hours = calculateWorkingHours(a.clockIn, a.clockOut);
+                    const match = hours.match(/(\d+)h/);
+                    if (match) {
+                        const worked = parseInt(match[1]);
+                        if (worked > 8) return sum + (worked - 8);
+                    }
+                }
+                return sum;
+            }, 0);
+            
+            const allowances = emp.salary * 0.1;
+            const overtimePay = overtimeHours * 25;
+            const grossSalary = emp.salary + allowances + overtimePay;
+            const netSalary = grossSalary - deduction;
+            
+            const payslipHtml = `
+                <div class="text-center mb-6 border-b-2 border-gray-100 pb-4">
+                    <h2 class="text-2xl font-bold text-indigo-900">ALP PORTAL</h2>
+                    <p class="text-gray-600">Payslip for ${monthName} ${year}</p>
+                </div>
+                
+                <div class="grid grid-cols-2 gap-6 mb-6">
+                    <div>
+                        <h4 class="font-bold text-gray-900 mb-2">Employee Details</h4>
+                        <p class="text-sm text-gray-600"><strong>Name:</strong> ${emp.firstName} ${emp.lastName}</p>
+                        <p class="text-sm text-gray-600"><strong>Department:</strong> ${emp.department}</p>
+                        <p class="text-sm text-gray-600"><strong>Position:</strong> ${emp.position}</p>
+                        <p class="text-sm text-gray-600"><strong>Employee ID:</strong> EMP-${emp.id.toString().padStart(4, '0')}</p>
+                    </div>
+                    <div class="text-right">
+                        <h4 class="font-bold text-gray-900 mb-2">Payment Details</h4>
+                        <p class="text-sm text-gray-600"><strong>Pay Date:</strong> ${new Date().toLocaleDateString()}</p>
+                        <p class="text-sm text-gray-600"><strong>Working Days:</strong> ${presentDays}/${workingDays}</p>
+                        <p class="text-sm text-gray-600"><strong>Bank:</strong> Sample Bank</p>
+                    </div>
+                </div>
+                
+                <table class="w-full mb-6">
+                    <thead>
+                        <tr class="bg-gray-50">
+                            <th class="text-left py-2 px-4 border-b">Description</th>
+                            <th class="text-right py-2 px-4 border-b">Amount ($)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td class="py-2 px-4 border-b">Basic Salary</td>
+                            <td class="text-right py-2 px-4 border-b">₱${emp.salary.toLocaleString()}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-4 border-b">Allowances (10%)</td>
+                            <td class="text-right py-2 px-4 border-b text-green-600">+₱${allowances.toLocaleString()}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-4 border-b">Overtime (${overtimeHours}h @ ₱25/h)</td>
+                            <td class="text-right py-2 px-4 border-b text-green-600">+₱${overtimePay.toLocaleString()}</td>
+                        </tr>
+                        <tr class="bg-gray-50 font-semibold">
+                            <td class="py-2 px-4 border-b">Gross Salary</td>
+                            <td class="text-right py-2 px-4 border-b">₱${grossSalary.toLocaleString()}</td>
+                        </tr>
+                        <tr>
+                            <td class="py-2 px-4 border-b">Absent Deductions (${absentDays} days)</td>
+                            <td class="text-right py-2 px-4 border-b text-red-600">-₱${deduction.toFixed(0)}</td>
+                        </tr>
+                        <tr class="bg-indigo-50 font-bold text-indigo-900 text-lg">
+                            <td class="py-3 px-4">NET SALARY</td>
+                            <td class="text-right py-3 px-4">₱${netSalary.toFixed(0)}</td>
+                        </tr>
+                    </tbody>
+                </table>
+                
+                <div class="border-t-2 border-gray-100 pt-4 text-center text-sm text-gray-500">
+                    <p>This is a computer-generated payslip and does not require signature.</p>
+                    <p class="mt-1">For queries, contact HR at hr@company.com</p>
+                </div>
+            `;
+            
+            document.getElementById('payslip-content').innerHTML = payslipHtml;
+            openModal('payslip-modal');
+        }
+
+        function downloadPayslip(employeeId, month, year) {
+            viewPayslip(employeeId, month, year);
+            setTimeout(() => {
+                printPayslip();
+            }, 500);
+        }
+
+        function printPayslip() {
+            const content = document.getElementById('payslip-content').innerHTML;
+            const printWindow = window.open('', '_blank');
+            printWindow.document.write(`
+                <html>
+                    <head>
+                        <title>Payslip</title>
+                        <script src="https://cdn.tailwindcss.com"><\/script>
+                        <style>
+                            body { font-family: 'Inter', sans-serif; padding: 20px; }
+                            @media print { body { padding: 0; } }
+                        </style>
+                    </head>
+                    <body>
+                        ${content}
+                    </body>
+                </html>
+            `);
+            printWindow.document.close();
+            printWindow.focus();
+            setTimeout(() => {
+                printWindow.print();
+                printWindow.close();
+            }, 250);
+        }
+
+        // Chart Functions
+        function initCharts() {
+            // Destroy existing charts first
+            if (attendanceChart) {
+                attendanceChart.destroy();
+                attendanceChart = null;
+            }
+            if (departmentChart) {
+                departmentChart.destroy();
+                departmentChart = null;
+            }
+            if (payrollChart) {
+                payrollChart.destroy();
+                payrollChart = null;
+            }
+            
+            // Attendance Overview Chart
+            const attendanceCtx = document.getElementById('attendanceChart');
+            if (attendanceCtx) {
+                const today = new Date();
+                const last7Days = [];
+                const presentData = [];
+                const absentData = [];
+                
+                for (let i = 6; i >= 0; i--) {
+                    const date = new Date(today);
+                    date.setDate(date.getDate() - i);
+                    const dateStr = date.toISOString().split('T')[0];
+                    last7Days.push(date.toLocaleDateString('en-US', { weekday: 'short' }));
+                    
+                    const dayAttendance = attendance.filter(a => a.date === dateStr);
+                    const present = dayAttendance.filter(a => a.status === 'Present' || a.status === 'Late').length;
+                    presentData.push(present);
+                    absentData.push(employees.length - present);
+                }
+                
+                attendanceChart = new Chart(attendanceCtx, {
+                    type: 'bar',
+                    data: {
+                        labels: last7Days,
+                        datasets: [{
+                            label: 'Present',
+                            data: presentData,
+                            backgroundColor: '#10b981',
+                            borderRadius: 6
+                        }, {
+                            label: 'Absent',
+                            data: absentData,
+                            backgroundColor: '#ef4444',
+                            borderRadius: 6
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            y: { 
+                                beginAtZero: true, 
+                                ticks: { stepSize: 1 }
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Department Distribution Chart
+            const deptCtx = document.getElementById('departmentChart');
+            if (deptCtx) {
+                const deptCount = {};
+                employees.forEach(emp => {
+                    deptCount[emp.department] = (deptCount[emp.department] || 0) + 1;
+                });
+                
+                departmentChart = new Chart(deptCtx, {
+                    type: 'doughnut',
+                    data: {
+                        labels: Object.keys(deptCount),
+                        datasets: [{
+                            data: Object.values(deptCount),
+                            backgroundColor: ['#6366f1', '#ec4899', '#10b981', '#f59e0b', '#8b5cf6'],
+                            borderWidth: 0
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'bottom'
+                            }
+                        }
+                    }
+                });
+            }
+            
+            // Payroll Trend Chart
+            const payrollCtx = document.getElementById('payrollChart');
+            if (payrollCtx) {
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const payrollData = months.map((_, index) => {
+                    const monthPayroll = payroll.filter(p => p.month === index && p.year === new Date().getFullYear());
+                    return monthPayroll.reduce((sum, p) => sum + p.netSalary, 0) || employees.reduce((sum, e) => sum + e.salary, 0);
+                });
+                
+                payrollChart = new Chart(payrollCtx, {
+                    type: 'line',
+                    data: {
+                        labels: months,
+                        datasets: [{
+                            label: 'Monthly Payroll (₱)',
+                            data: payrollData,
+                            borderColor: '#6366f1',
+                            backgroundColor: 'rgba(99, 102, 241, 0.1)',
+                            fill: true,
+                            tension: 0.4,
+                            borderWidth: 2
+                        }]
+                    },
+                    options: {
+                        responsive: true,
+                        maintainAspectRatio: false,
+                        plugins: {
+                            legend: {
+                                display: true,
+                                position: 'top'
+                            }
+                        },
+                        scales: {
+                            y: { 
+                                beginAtZero: true,
+                                ticks: {
+                                    callback: function(value) {
+                                        return '₱' + value.toLocaleString();
+                                    }
+                                }
+                            }
+                        }
+                    }
+                });
+            }
+        }
+
+        // Initialize on load
+        document.addEventListener('DOMContentLoaded', function() {
+            refreshDashboard();
+            lucide.createIcons();
+            
+            // Set current month in payroll
+            document.getElementById('payroll-month').value = new Date().getMonth();
+        });
+    </script>
+    {% endverbatim %}
+
+    <!-- Edit Employee Modal -->
+    <div id="edit-employee-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 modal-backdrop" onclick="closeModal('edit-employee-modal')"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4 overflow-y-auto">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-lg p-6 relative slide-in my-8">
+                <button onclick="closeModal('edit-employee-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+                <h3 class="text-xl font-bold text-gray-900 mb-6">Edit Employee Profile</h3>
+                
+                <form id="edit-employee-form" onsubmit="handleEditEmployee(event)">
+                    <input type="hidden" id="edit-employee-id" name="employeeId">
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">First Name</label>
+                            <input type="text" id="edit-firstName" name="firstName" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Last Name</label>
+                            <input type="text" id="edit-lastName" name="lastName" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <input type="email" id="edit-email" name="email" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Department</label>
+                            <select id="edit-department" name="department" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                                <option value="Engineering">Engineering</option>
+                                <option value="Design">Design</option>
+                                <option value="Marketing">Marketing</option>
+                                <option value="HR">HR</option>
+                                <option value="Sales">Sales</option>
+                                <option value="General">General</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Position</label>
+                            <input type="text" id="edit-position" name="position" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Base Salary (₱)</label>
+                            <input type="number" id="edit-salary" name="salary" required min="0" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Join Date</label>
+                            <input type="date" id="edit-joinDate" name="joinDate" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                        <select id="edit-status" name="status" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="Pending">Pending Setup</option>
+                            <option value="Active">Active</option>
+                            <option value="Inactive">Inactive</option>
+                            <option value="On Leave">On Leave</option>
+                        </select>
+                        <p class="text-xs text-gray-500 mt-1">Set to "Active" to deploy profile to portal</p>
+                    </div>
+                    
+                    <div class="flex gap-3">
+                        <button type="button" onclick="closeModal('edit-employee-modal')" class="flex-1 px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+                        <button type="submit" class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors">Save Changes</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+</body>
+</html>
+
+
+
+

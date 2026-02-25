@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ALP Portal - Employee Portal</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    {% load static %}
+    <script src="{% static 'api.js' %}"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .glass-effect {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+        }
+        .sidebar-link {
+            transition: all 0.3s ease;
+        }
+        .sidebar-link:hover {
+            background-color: rgba(99, 102, 241, 0.1);
+            color: #6366f1;
+        }
+        .sidebar-link.active {
+            background-color: #6366f1;
+            color: white;
+        }
+        .fade-in {
+            animation: fadeIn 0.3s ease-in;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        .slide-in {
+            animation: slideIn 0.3s ease-out;
+        }
+        @keyframes slideIn {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
+        }
+        .status-present { background-color: #dcfce7; color: #166534; }
+        .status-absent { background-color: #fee2e2; color: #991b1b; }
+        .status-late { background-color: #fef3c7; color: #92400e; }
+        .status-leave { background-color: #e0e7ff; color: #3730a3; }
+        .status-pending { background-color: #fef9c3; color: #854d0e; }
+        .status-approved { background-color: #dcfce7; color: #166534; }
+        .status-rejected { background-color: #fee2e2; color: #991b1b; }
+        
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #c7c7c7;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #a0a0a0;
+        }
+        
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+        }
+    </style>
+</head>
+<body class="text-gray-800">
+
+    <!-- Mobile Header -->
+    <div class="lg:hidden bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-40">
+        <div class="flex items-center gap-2">
+            <div class="w-8 h-8 bg-indigo-600 rounded-lg flex items-center justify-center">
+                <i data-lucide="users" class="w-5 h-5 text-white"></i>
+            </div>
+            <span class="font-bold text-lg text-indigo-900">ALP Portal</span>
+        </div>
+        <button onclick="toggleMobileMenu()" class="p-2 hover:bg-gray-100 rounded-lg">
+            <i data-lucide="menu" class="w-6 h-6"></i>
+        </button>
+    </div>
+
+    <div class="flex min-h-screen">
+        <!-- Sidebar -->
+        <aside id="sidebar" class="fixed lg:static inset-y-0 left-0 z-50 w-64 bg-white shadow-xl transform -translate-x-full lg:translate-x-0 transition-transform duration-300 ease-in-out flex flex-col">
+            <div class="p-6 border-b border-gray-100">
+                <div class="flex items-center gap-3">
+                    <div class="w-10 h-10 bg-indigo-600 rounded-xl flex items-center justify-center shadow-lg shadow-indigo-200">
+                        <i data-lucide="users" class="w-6 h-6 text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="font-bold text-xl text-indigo-900">ALP Portal</h1>
+                        <p class="text-xs text-gray-500">Employee Portal</p>
+                    </div>
+                </div>
+            </div>
+
+            <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
+                <button onclick="switchView('dashboard')" id="nav-dashboard" class="sidebar-link active w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium">
+                    <i data-lucide="layout-dashboard" class="w-5 h-5"></i>
+                    My Dashboard
+                </button>
+                <button onclick="switchView('attendance')" id="nav-attendance" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600">
+                    <i data-lucide="clock" class="w-5 h-5"></i>
+                    My Attendance
+                </button>
+                <button onclick="switchView('leave')" id="nav-leave" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600">
+                    <i data-lucide="calendar-off" class="w-5 h-5"></i>
+                    My Leaves
+                </button>
+                <button onclick="switchView('payroll')" id="nav-payroll" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600">
+                    <i data-lucide="banknote" class="w-5 h-5"></i>
+                    My Payslips
+                </button>
+                <button onclick="switchView('profile')" id="nav-profile" class="sidebar-link w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-medium text-gray-600">
+                    <i data-lucide="user" class="w-5 h-5"></i>
+                    My Profile
+                </button>
+            </nav>
+
+            <!-- User Profile & Logout Section -->
+            <div class="p-4 border-t border-gray-100 space-y-3">
+                <!-- User Info -->
+                <div class="bg-gray-50 rounded-xl p-3">
+                    <div class="flex items-center gap-3 mb-2">
+                        <div class="w-10 h-10 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold">
+                            <span id="user-initials">?</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-semibold text-gray-900 truncate" id="user-name">Loading...</p>
+                            <p class="text-xs text-gray-500 truncate" id="user-role">Employee</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Logout Button -->
+                <button onclick="handleLogout()" class="w-full flex items-center justify-center gap-2 px-4 py-3 bg-red-50 hover:bg-red-100 text-red-600 rounded-xl font-medium transition-colors">
+                    <i data-lucide="log-out" class="w-5 h-5"></i>
+                    <span>Logout</span>
+                </button>
+                
+                <!-- Current Time -->
+                <div class="bg-gradient-to-r from-indigo-500 to-purple-600 rounded-xl p-3 text-white text-center">
+                    <p class="text-xs opacity-90 mb-1">Current Time</p>
+                    <p id="current-time" class="text-base font-bold font-mono">00:00:00</p>
+                    <p id="current-date" class="text-xs opacity-90 mt-1">Loading...</p>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Mobile Menu Overlay -->
+        <div id="mobile-overlay" onclick="toggleMobileMenu()" class="fixed inset-0 bg-black bg-opacity-50 z-40 hidden lg:hidden"></div>
+
+        <!-- Main Content -->
+        <main class="flex-1 overflow-y-auto bg-gray-50 p-4 lg:p-8">
+            
+            <!-- Dashboard View -->
+            <div id="view-dashboard" class="view-section fade-in">
+                <div class="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">My Dashboard</h2>
+                        <p class="text-gray-600 mt-1">Welcome back! Here's your overview.</p>
+                    </div>
+                    <button onclick="openModal('clock-modal')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-6 py-3 rounded-xl font-medium flex items-center gap-2 shadow-lg shadow-indigo-200 transition-all hover:scale-105">
+                        <i data-lucide="fingerprint" class="w-5 h-5"></i>
+                        Clock In/Out
+                    </button>
+                </div>
+
+                <!-- Stats Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600 mb-1">Days Present</p>
+                                <h3 class="text-3xl font-bold text-gray-900" id="stat-days-present">0</h3>
+                            </div>
+                            <div class="w-12 h-12 bg-green-50 rounded-xl flex items-center justify-center">
+                                <i data-lucide="check-circle" class="w-6 h-6 text-green-600"></i>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-2">This month</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600 mb-1">Days Absent</p>
+                                <h3 class="text-3xl font-bold text-gray-900" id="stat-days-absent">0</h3>
+                            </div>
+                            <div class="w-12 h-12 bg-red-50 rounded-xl flex items-center justify-center">
+                                <i data-lucide="x-circle" class="w-6 h-6 text-red-600"></i>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-2">This month</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600 mb-1">Leaves Taken</p>
+                                <h3 class="text-3xl font-bold text-gray-900" id="stat-leaves-taken">0</h3>
+                            </div>
+                            <div class="w-12 h-12 bg-purple-50 rounded-xl flex items-center justify-center">
+                                <i data-lucide="coffee" class="w-6 h-6 text-purple-600"></i>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-2">This year</p>
+                    </div>
+
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100 hover:shadow-md transition-shadow">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <p class="text-sm font-medium text-gray-600 mb-1">Attendance Rate</p>
+                                <h3 class="text-3xl font-bold text-gray-900" id="stat-attendance-rate">0%</h3>
+                            </div>
+                            <div class="w-12 h-12 bg-blue-50 rounded-xl flex items-center justify-center">
+                                <i data-lucide="trending-up" class="w-6 h-6 text-blue-600"></i>
+                            </div>
+                        </div>
+                        <p class="text-sm text-gray-500 mt-2">This month</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    <!-- Recent Attendance -->
+                    <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-lg font-bold text-gray-900">My Recent Attendance</h3>
+                            <button onclick="switchView('attendance')" class="text-indigo-600 text-sm font-medium hover:underline">View All</button>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full">
+                                <thead class="bg-gray-50 text-gray-600 text-xs uppercase">
+                                    <tr>
+                                        <th class="px-4 py-3 text-left rounded-tl-lg">Date</th>
+                                        <th class="px-4 py-3 text-left">Status</th>
+                                        <th class="px-4 py-3 text-left">Clock In</th>
+                                        <th class="px-4 py-3 text-left rounded-tr-lg">Clock Out</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="recent-attendance-table" class="text-sm">
+                                    <!-- Populated by JS -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <!-- My Leave Requests -->
+                    <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                        <div class="flex justify-between items-center mb-6">
+                            <h3 class="text-lg font-bold text-gray-900">My Leave Requests</h3>
+                            <span id="pending-leaves-count" class="bg-yellow-100 text-yellow-800 text-xs font-bold px-2 py-1 rounded-full">0</span>
+                        </div>
+                        <div id="my-leaves-list" class="space-y-4">
+                            <!-- Populated by JS -->
+                        </div>
+                        <button onclick="openModal('request-leave-modal')" class="w-full mt-4 bg-indigo-50 hover:bg-indigo-100 text-indigo-600 py-2 rounded-xl font-medium transition-colors">
+                            Request Leave
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- My Attendance View -->
+            <div id="view-attendance" class="view-section hidden fade-in">
+                <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">My Attendance</h2>
+                        <p class="text-gray-600 mt-1">Track your attendance records</p>
+                    </div>
+                    <div class="flex gap-2">
+                        <input type="date" id="attendance-date" class="px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500" onchange="loadMyAttendance()">
+                        <button onclick="openModal('clock-modal')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-medium flex items-center gap-2">
+                            <i data-lucide="fingerprint" class="w-5 h-5"></i>
+                            Clock In/Out
+                        </button>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 text-gray-600 text-xs uppercase">
+                                <tr>
+                                    <th class="px-6 py-4 text-left">Date</th>
+                                    <th class="px-6 py-4 text-left">Status</th>
+                                    <th class="px-6 py-4 text-left">Clock In</th>
+                                    <th class="px-6 py-4 text-left">Clock Out</th>
+                                    <th class="px-6 py-4 text-left">Working Hours</th>
+                                    <th class="px-6 py-4 text-left">Notes</th>
+                                </tr>
+                            </thead>
+                            <tbody id="attendance-table" class="divide-y divide-gray-100">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- My Leaves View -->
+            <div id="view-leave" class="view-section hidden fade-in">
+                <div class="mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <div>
+                        <h2 class="text-2xl font-bold text-gray-900">My Leave Requests</h2>
+                        <p class="text-gray-600 mt-1">Manage your leave requests</p>
+                    </div>
+                    <button onclick="openModal('request-leave-modal')" class="bg-indigo-600 hover:bg-indigo-700 text-white px-4 py-2 rounded-xl font-medium flex items-center gap-2 shadow-lg shadow-indigo-200">
+                        <i data-lucide="plus" class="w-5 h-5"></i>
+                        Request Leave
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-4 gap-6 mb-6">
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-600">Total Requests</span>
+                            <i data-lucide="calendar" class="w-5 h-5 text-indigo-600"></i>
+                        </div>
+                        <span class="text-2xl font-bold text-indigo-600" id="leave-total">0</span>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-600">Approved</span>
+                            <i data-lucide="check-circle" class="w-5 h-5 text-green-600"></i>
+                        </div>
+                        <span class="text-2xl font-bold text-green-600" id="leave-approved">0</span>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-600">Pending</span>
+                            <i data-lucide="clock" class="w-5 h-5 text-yellow-600"></i>
+                        </div>
+                        <span class="text-2xl font-bold text-yellow-600" id="leave-pending">0</span>
+                    </div>
+                    <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
+                        <div class="flex justify-between items-center mb-2">
+                            <span class="text-sm text-gray-600">Rejected</span>
+                            <i data-lucide="x-circle" class="w-5 h-5 text-red-600"></i>
+                        </div>
+                        <span class="text-2xl font-bold text-red-600" id="leave-rejected">0</span>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 text-gray-600 text-xs uppercase">
+                                <tr>
+                                    <th class="px-6 py-4 text-left">Leave Type</th>
+                                    <th class="px-6 py-4 text-left">From</th>
+                                    <th class="px-6 py-4 text-left">To</th>
+                                    <th class="px-6 py-4 text-left">Days</th>
+                                    <th class="px-6 py-4 text-left">Status</th>
+                                    <th class="px-6 py-4 text-left">Reason</th>
+                                </tr>
+                            </thead>
+                            <tbody id="leave-table" class="divide-y divide-gray-100">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- My Payslips View -->
+            <div id="view-payroll" class="view-section hidden fade-in">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">My Payslips</h2>
+                    <p class="text-gray-600 mt-1">View and download your salary slips</p>
+                </div>
+
+                <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+                    <div class="overflow-x-auto">
+                        <table class="w-full">
+                            <thead class="bg-gray-50 text-gray-600 text-xs uppercase">
+                                <tr>
+                                    <th class="px-6 py-4 text-left">Month/Year</th>
+                                    <th class="px-6 py-4 text-left">Basic Salary</th>
+                                    <th class="px-6 py-4 text-left">Allowances</th>
+                                    <th class="px-6 py-4 text-left">Overtime</th>
+                                    <th class="px-6 py-4 text-left">Deductions</th>
+                                    <th class="px-6 py-4 text-left">Net Salary</th>
+                                    <th class="px-6 py-4 text-left">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="payroll-table" class="divide-y divide-gray-100">
+                                <!-- Populated by JS -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- My Profile View -->
+            <div id="view-profile" class="view-section hidden fade-in">
+                <div class="mb-6">
+                    <h2 class="text-2xl font-bold text-gray-900">My Profile</h2>
+                    <p class="text-gray-600 mt-1">View your personal information</p>
+                </div>
+
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- Profile Card -->
+                    <div class="lg:col-span-1">
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                            <div class="text-center">
+                                <div class="w-24 h-24 bg-gradient-to-br from-indigo-400 to-purple-500 rounded-full flex items-center justify-center text-white font-bold text-3xl mx-auto mb-4">
+                                    <span id="profile-initials">?</span>
+                                </div>
+                                <h3 class="text-xl font-bold text-gray-900" id="profile-name">Loading...</h3>
+                                <p class="text-sm text-gray-500 mt-1" id="profile-position">Position</p>
+                                <p class="text-xs text-gray-400 mt-1" id="profile-department">Department</p>
+                                
+                                <div class="mt-6 pt-6 border-t border-gray-100">
+                                    <div class="flex items-center justify-center gap-2 text-sm text-gray-600">
+                                        <i data-lucide="calendar" class="w-4 h-4"></i>
+                                        <span>Joined: <span id="profile-join-date">-</span></span>
+                                    </div>
+                                    <div class="mt-2">
+                                        <span class="px-3 py-1 rounded-full text-xs font-medium bg-green-100 text-green-700" id="profile-status">Active</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Profile Details -->
+                    <div class="lg:col-span-2">
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6">
+                            <h4 class="text-lg font-bold text-gray-900 mb-6">Personal Information</h4>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-2">First Name</label>
+                                    <div class="px-4 py-3 bg-gray-50 rounded-xl text-gray-900" id="profile-first-name">-</div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-2">Last Name</label>
+                                    <div class="px-4 py-3 bg-gray-50 rounded-xl text-gray-900" id="profile-last-name">-</div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-2">Email</label>
+                                    <div class="px-4 py-3 bg-gray-50 rounded-xl text-gray-900" id="profile-email">-</div>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-600 mb-2">Employee ID</label>
+                                    <div class="px-4 py-3 bg-gray-50 rounded-xl text-gray-900" id="profile-emp-id">-</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Quick Stats -->
+                        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 p-6 mt-6">
+                            <h4 class="text-lg font-bold text-gray-900 mb-6">Quick Statistics</h4>
+                            
+                            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                <div class="text-center p-4 bg-green-50 rounded-xl">
+                                    <p class="text-2xl font-bold text-green-600" id="profile-stat-present">0</p>
+                                    <p class="text-xs text-gray-600 mt-1">Days Present</p>
+                                </div>
+                                <div class="text-center p-4 bg-red-50 rounded-xl">
+                                    <p class="text-2xl font-bold text-red-600" id="profile-stat-absent">0</p>
+                                    <p class="text-xs text-gray-600 mt-1">Days Absent</p>
+                                </div>
+                                <div class="text-center p-4 bg-purple-50 rounded-xl">
+                                    <p class="text-2xl font-bold text-purple-600" id="profile-stat-leaves">0</p>
+                                    <p class="text-xs text-gray-600 mt-1">Leaves Taken</p>
+                                </div>
+                                <div class="text-center p-4 bg-blue-50 rounded-xl">
+                                    <p class="text-2xl font-bold text-blue-600" id="profile-stat-rate">0%</p>
+                                    <p class="text-xs text-gray-600 mt-1">Attendance</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Modals -->
+    
+    <!-- Clock In/Out Modal -->
+    <div id="clock-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 modal-backdrop" onclick="closeModal('clock-modal')"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative slide-in">
+                <button onclick="closeModal('clock-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+                <div class="text-center mb-6">
+                    <div class="w-16 h-16 bg-indigo-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                        <i data-lucide="fingerprint" class="w-8 h-8 text-indigo-600"></i>
+                    </div>
+                    <h3 class="text-xl font-bold text-gray-900">Quick Clock</h3>
+                    <p class="text-gray-500 mt-1">Record your attendance</p>
+                </div>
+                
+                <form id="clock-form" onsubmit="handleClockSubmit(event)">
+                    <div class="grid grid-cols-2 gap-4 mb-6">
+                        <button type="button" onclick="setClockType('in')" id="btn-clock-in" class="py-3 px-4 rounded-xl border-2 border-green-500 text-green-600 font-medium hover:bg-green-50 transition-colors flex flex-col items-center gap-2">
+                            <i data-lucide="log-in" class="w-6 h-6"></i>
+                            Clock In
+                        </button>
+                        <button type="button" onclick="setClockType('out')" id="btn-clock-out" class="py-3 px-4 rounded-xl border-2 border-gray-200 text-gray-600 font-medium hover:bg-gray-50 transition-colors flex flex-col items-center gap-2">
+                            <i data-lucide="log-out" class="w-6 h-6"></i>
+                            Clock Out
+                        </button>
+                    </div>
+                    
+                    <input type="hidden" id="clock-type" value="in">
+                    
+                    <button type="submit" class="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-3 rounded-xl font-medium transition-colors">
+                        Confirm
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Request Leave Modal -->
+    <div id="request-leave-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 modal-backdrop" onclick="closeModal('request-leave-modal')"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 relative slide-in">
+                <button onclick="closeModal('request-leave-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+                <h3 class="text-xl font-bold text-gray-900 mb-6">Request Leave</h3>
+                
+                <form id="request-leave-form" onsubmit="handleLeaveRequest(event)">
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Leave Type</label>
+                        <select name="type" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                            <option value="Vacation">Vacation</option>
+                            <option value="Sick Leave">Sick Leave</option>
+                            <option value="Personal">Personal</option>
+                            <option value="Work From Home">Work From Home</option>
+                            <option value="Unpaid">Unpaid Leave</option>
+                        </select>
+                    </div>
+                    
+                    <div class="grid grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Start Date</label>
+                            <input type="date" name="startDate" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">End Date</label>
+                            <input type="date" name="endDate" required class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                        </div>
+                    </div>
+                    
+                    <div class="mb-6">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Reason</label>
+                        <textarea name="reason" rows="3" class="w-full px-4 py-2 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-500"></textarea>
+                    </div>
+                    
+                    <div class="flex gap-3">
+                        <button type="button" onclick="closeModal('request-leave-modal')" class="flex-1 px-4 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors">Cancel</button>
+                        <button type="submit" class="flex-1 px-4 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors">Submit Request</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- Payslip Modal -->
+    <div id="payslip-modal" class="fixed inset-0 z-50 hidden">
+        <div class="absolute inset-0 modal-backdrop" onclick="closeModal('payslip-modal')"></div>
+        <div class="absolute inset-0 flex items-center justify-center p-4 overflow-y-auto">
+            <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl p-8 relative slide-in my-8">
+                <button onclick="closeModal('payslip-modal')" class="absolute top-4 right-4 text-gray-400 hover:text-gray-600">
+                    <i data-lucide="x" class="w-6 h-6"></i>
+                </button>
+                
+                <div id="payslip-content" class="border-2 border-gray-200 rounded-xl p-8 bg-white">
+                    <!-- Payslip content populated by JS -->
+                </div>
+                
+                <div class="mt-6 flex gap-3 justify-end">
+                    <button onclick="closeModal('payslip-modal')" class="px-6 py-2 border border-gray-300 rounded-xl text-gray-700 hover:bg-gray-50 transition-colors">Close</button>
+                    <button onclick="printPayslip()" class="px-6 py-2 bg-indigo-600 text-white rounded-xl hover:bg-indigo-700 transition-colors flex items-center gap-2">
+                        <i data-lucide="printer" class="w-5 h-5"></i>
+                        Print Payslip
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {% verbatim %}
+    <script>
+        // Initialize Lucide icons
+        lucide.createIcons();
+    </script>
+    {% endverbatim %}
+    <script src="{% static 'employee_dashboard.js' %}"></script>
+</body>
+</html>
+
